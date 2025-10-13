@@ -100,7 +100,7 @@ final class LocoProvider implements ProviderInterface
                 // Loco forbids concurrent requests, so the requests must be synchronous in order to prevent "429 Too Many Requests" errors.
                 $response = $this->client->request('GET', \sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
                     'query' => [
-                        'filter' => $domain,
+                        'filter' => '*' !== $domain ? $domain : '',
                         'status' => $this->restrictToStatus ?? 'translated,blank-translation',
                     ],
                     'headers' => [

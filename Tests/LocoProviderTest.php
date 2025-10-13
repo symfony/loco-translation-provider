@@ -1158,6 +1158,34 @@ class LocoProviderTest extends ProviderTestCase
         }
     }
 
+    public function testReadForAllDomains()
+    {
+        $loader = $this->getLoader();
+
+        $loader
+            ->expects($this->once())
+            ->method('load')
+            ->willReturn($this->createMock(MessageCatalogue::class));
+
+        $provider = self::createProvider(
+            new MockHttpClient([
+                function (string $method, string $url, array $options = []): ResponseInterface {
+                    $this->assertSame('GET', $method);
+                    $this->assertSame('https://localise.biz/api/export/locale/fr.xlf?filter=&status=translated%2Cblank-translation', $url);
+                    $this->assertSame(['filter' => '', 'status' => 'translated,blank-translation'], $options['query']);
+
+                    return new MockResponse();
+                },
+            ], 'https://localise.biz/api/'),
+            $this->getLoader(),
+            $this->getLogger(),
+            $this->getDefaultLocale(),
+            'localise.biz/api/',
+        );
+
+        $this->translatorBag = $provider->read(['*'], ['fr']);
+    }
+
     public function testReadWithRestrictToStatus()
     {
         $loader = $this->getLoader();
