@@ -967,8 +967,7 @@ class LocoProviderTest extends ProviderTestCase
     </body>
   </file>
 </xliff>
-XLIFF
-            ,
+XLIFF,
             $expectedTranslatorBagEn,
         ];
 
@@ -997,8 +996,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-            ,
+XLIFF,
             $expectedTranslatorBagFr,
         ];
     }
@@ -1049,8 +1047,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                     'messages+intl-icu' => <<<'XLIFF'
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 http://docs.oasis-open.org/xliff/v1.2/os/xliff-core-1.2-strict.xsd">
@@ -1066,8 +1063,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                     'validators' => <<<'XLIFF'
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 http://docs.oasis-open.org/xliff/v1.2/os/xliff-core-1.2-strict.xsd">
@@ -1087,8 +1083,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                 ],
                 'fr' => [
                     'messages' => <<<'XLIFF'
@@ -1106,8 +1101,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                     'messages+intl-icu' => <<<'XLIFF'
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 http://docs.oasis-open.org/xliff/v1.2/os/xliff-core-1.2-strict.xsd">
@@ -1123,8 +1117,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                     'validators' => <<<'XLIFF'
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 http://docs.oasis-open.org/xliff/v1.2/os/xliff-core-1.2-strict.xsd">
@@ -1144,8 +1137,7 @@ XLIFF
     </body>
   </file>
 </xliff>
-XLIFF
-                    ,
+XLIFF,
                 ],
             ],
             $expectedTranslatorBag,
@@ -1169,6 +1161,34 @@ XLIFF
 
             yield [$locales, $domains, $responseContents, $lastModifieds, $expectedTranslatorBag];
         }
+    }
+
+    public function testReadForAllDomains()
+    {
+        $loader = $this->getLoader();
+
+        $loader
+            ->expects($this->once())
+            ->method('load')
+            ->willReturn($this->createMock(MessageCatalogue::class));
+
+        $provider = self::createProvider(
+            new MockHttpClient([
+                function (string $method, string $url, array $options = []): ResponseInterface {
+                    $this->assertSame('GET', $method);
+                    $this->assertSame('https://localise.biz/api/export/locale/fr.xlf?filter=&status=translated%2Cblank-translation', $url);
+                    $this->assertSame(['filter' => '', 'status' => 'translated,blank-translation'], $options['query']);
+
+                    return new MockResponse();
+                },
+            ], 'https://localise.biz/api/'),
+            $this->getLoader(),
+            $this->getLogger(),
+            $this->getDefaultLocale(),
+            'localise.biz/api/',
+        );
+
+        $this->translatorBag = $provider->read(['*'], ['fr']);
     }
 
     public function testReadWithRestrictToStatus()
