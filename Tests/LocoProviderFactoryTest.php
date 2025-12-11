@@ -11,9 +11,13 @@
 
 namespace Symfony\Component\Translation\Bridge\Loco\Tests;
 
+use Psr\Log\NullLogger;
+use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\Translation\Bridge\Loco\LocoProviderFactory;
+use Symfony\Component\Translation\Loader\ArrayLoader;
 use Symfony\Component\Translation\Provider\ProviderFactoryInterface;
 use Symfony\Component\Translation\Test\ProviderFactoryTestCase;
+use Symfony\Component\Translation\TranslatorBag;
 
 class LocoProviderFactoryTest extends ProviderFactoryTestCase
 {
@@ -43,6 +47,6 @@ class LocoProviderFactoryTest extends ProviderFactoryTestCase
 
     public function createFactory(): ProviderFactoryInterface
     {
-        return new LocoProviderFactory($this->getClient(), $this->getLogger(), $this->getDefaultLocale(), $this->getLoader(), $this->getTranslatorBag());
+        return new LocoProviderFactory(new MockHttpClient(), new NullLogger(), $this->getDefaultLocale(), new ArrayLoader(), new TranslatorBag());
     }
 }
