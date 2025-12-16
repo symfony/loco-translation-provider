@@ -207,7 +207,7 @@ final class LocoProvider implements ProviderInterface
             }
         }
 
-        return array_map(fn ($asset) => $asset['id'], $response->toArray(false));
+        return array_map(static fn ($asset) => $asset['id'], $response->toArray(false));
     }
 
     private function createAssets(array $keys, string $domain): array
@@ -364,7 +364,7 @@ final class LocoProvider implements ProviderInterface
             throw new ProviderException(\sprintf('Unable to get locales on Loco: "%s".', $response->getContent(false)), $response);
         }
 
-        return array_reduce($content, function ($carry, $locale) {
+        return array_reduce($content, static function ($carry, $locale) {
             $carry[] = $locale['code'];
 
             return $carry;
