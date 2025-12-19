@@ -703,21 +703,17 @@ class LocoProviderTest extends ProviderTestCase
      */
     public function testReadForOneLocaleAndOneDomain(string $locale, string $domain, string $responseContent, TranslatorBag $expectedTranslatorBag)
     {
-        $loader = $this->getLoader();
-        $loader->expects($this->once())
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->once())
             ->method('load')
             ->willReturn((new XliffFileLoader())->load($responseContent, $locale, $domain));
-
-        $this->getTranslatorBag()->expects($this->any())
-            ->method('getCatalogue')
-            ->willReturn(new MessageCatalogue($locale));
 
         $provider = self::createProvider((new MockHttpClient(new MockResponse($responseContent)))->withOptions([
             'base_uri' => 'https://localise.biz/api/',
             'headers' => [
                 'Authorization' => 'Loco API_KEY',
             ],
-        ]), $loader, new NullLogger(), 'en', 'localise.biz/api/');
+        ]), $this->loader, new NullLogger(), 'en', 'localise.biz/api/');
         $translatorBag = $provider->read([$domain], [$locale]);
         // We don't want to assert equality of metadata here, due to the ArrayLoader usage.
         foreach ($translatorBag->getCatalogues() as $catalogue) {
@@ -744,8 +740,8 @@ class LocoProviderTest extends ProviderTestCase
             }
         }
 
-        $loader = $this->getLoader();
-        $loader->expects($this->exactly(\count($consecutiveLoadArguments)))
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->exactly(\count($consecutiveLoadArguments)))
             ->method('load')
             ->willReturnCallback(function (...$args) use (&$consecutiveLoadArguments, &$consecutiveLoadReturns) {
                 $this->assertSame(array_shift($consecutiveLoadArguments), $args);
@@ -753,16 +749,12 @@ class LocoProviderTest extends ProviderTestCase
                 return array_shift($consecutiveLoadReturns);
             });
 
-        $this->getTranslatorBag()->expects($this->any())
-            ->method('getCatalogue')
-            ->willReturn(new MessageCatalogue($locale));
-
         $provider = self::createProvider((new MockHttpClient($responses))->withOptions([
             'base_uri' => 'https://localise.biz/api/',
             'headers' => [
                 'Authorization' => 'Loco API_KEY',
             ],
-        ]), $loader, $this->getLogger(), 'en', 'localise.biz/api/');
+        ]), $this->loader, $this->getLogger(), 'en', 'localise.biz/api/');
         $translatorBag = $provider->read($domains, $locales);
         // We don't want to assert equality of metadata here, due to the ArrayLoader usage.
         foreach ($translatorBag->getCatalogues() as $catalogue) {
@@ -800,8 +792,8 @@ class LocoProviderTest extends ProviderTestCase
             }
         }
 
-        $loader = $this->getLoader();
-        $loader->expects($this->exactly(\count($consecutiveLoadArguments)))
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->exactly(\count($consecutiveLoadArguments)))
             ->method('load')
             ->willReturnCallback(function (...$args) use (&$consecutiveLoadArguments, &$consecutiveLoadReturns) {
                 $this->assertSame(array_shift($consecutiveLoadArguments), $args);
@@ -1165,12 +1157,10 @@ XLIFF,
 
     public function testReadForAllDomains()
     {
-        $loader = $this->getLoader();
-
-        $loader
-            ->expects($this->once())
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->once())
             ->method('load')
-            ->willReturn($this->createMock(MessageCatalogue::class));
+            ->willReturn(new MessageCatalogue('fr'));
 
         $provider = self::createProvider(
             new MockHttpClient([
@@ -1193,12 +1183,11 @@ XLIFF,
 
     public function testReadWithRestrictToStatus()
     {
-        $loader = $this->getLoader();
-
-        $loader
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader
             ->expects($this->once())
             ->method('load')
-            ->willReturn($this->createMock(MessageCatalogue::class));
+            ->willReturn(new MessageCatalogue('fr'));
 
         $provider = self::createProvider(
             new MockHttpClient([
