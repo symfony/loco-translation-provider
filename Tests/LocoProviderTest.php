@@ -726,24 +726,20 @@ class LocoProviderTest extends ProviderTestCase
     public function testReadForManyLocalesAndManyDomains(array $locales, array $domains, array $responseContents, TranslatorBag $expectedTranslatorBag)
     {
         $responses = [];
-        $consecutiveLoadArguments = [];
-        $consecutiveLoadReturns = [];
 
         foreach ($locales as $locale) {
             foreach ($domains as $domain) {
                 $responses[] = new MockResponse($responseContents[$locale][$domain]);
-                $consecutiveLoadArguments[] = [$responseContents[$locale][$domain], $locale, $domain];
-                $consecutiveLoadReturns[] = (new XliffFileLoader())->load($responseContents[$locale][$domain], $locale, $domain);
             }
         }
 
         $this->loader = $this->createMock(LoaderInterface::class);
-        $this->loader->expects($this->exactly(\count($consecutiveLoadArguments)))
+        $this->loader->expects($this->exactly(\count($responses)))
             ->method('load')
-            ->willReturnCallback(function (...$args) use (&$consecutiveLoadArguments, &$consecutiveLoadReturns) {
-                $this->assertSame(array_shift($consecutiveLoadArguments), $args);
+            ->willReturnCallback(function (string $resource, string $locale, string $domain) use ($responseContents) {
+                $this->assertSame($responseContents[$locale][$domain], $resource);
 
-                return array_shift($consecutiveLoadReturns);
+                return (new XliffFileLoader())->load($resource, $locale, $domain);
             });
 
         $provider = self::createProvider((new MockHttpClient($responses))->withOptions([
@@ -765,8 +761,6 @@ class LocoProviderTest extends ProviderTestCase
     public function testReadWithLastModified(array $locales, array $domains, array $responseContents, array $lastModifieds, TranslatorBag $expectedTranslatorBag)
     {
         $responses = [];
-        $consecutiveLoadArguments = [];
-        $consecutiveLoadReturns = [];
 
         foreach ($locales as $locale) {
             foreach ($domains as $domain) {
@@ -782,18 +776,16 @@ class LocoProviderTest extends ProviderTestCase
                         ],
                     ]);
                 };
-                $consecutiveLoadArguments[] = [$responseContents[$locale][$domain], $locale, $domain];
-                $consecutiveLoadReturns[] = (new XliffFileLoader())->load($responseContents[$locale][$domain], $locale, $domain);
             }
         }
 
         $this->loader = $this->createMock(LoaderInterface::class);
-        $this->loader->expects($this->exactly(\count($consecutiveLoadArguments)))
+        $this->loader->expects($this->exactly(\count($responses)))
             ->method('load')
-            ->willReturnCallback(function (...$args) use (&$consecutiveLoadArguments, &$consecutiveLoadReturns) {
-                $this->assertSame(array_shift($consecutiveLoadArguments), $args);
+            ->willReturnCallback(function (string $resource, string $locale, string $domain) use ($responseContents) {
+                $this->assertSame($responseContents[$locale][$domain], $resource);
 
-                return array_shift($consecutiveLoadReturns);
+                return (new XliffFileLoader())->load($resource, $locale, $domain);
             });
 
         $provider = self::createProvider(

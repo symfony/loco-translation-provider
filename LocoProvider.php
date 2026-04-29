@@ -92,12 +92,12 @@ final class LocoProvider implements ProviderInterface
     {
         $domains = $domains ?: ['*'];
         $translatorBag = new TranslatorBag();
+        $responses = new \SplObjectStorage();
 
         foreach ($locales as $locale) {
             foreach ($domains as $domain) {
                 $previousCatalogue = $this->translatorBag?->getCatalogue($locale);
 
-                // Loco forbids concurrent requests, so the requests must be synchronous in order to prevent "429 Too Many Requests" errors.
                 $response = $this->client->request('GET', \sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
                     'query' => [
                         'filter' => '*' !== $domain ? $domain : '',
@@ -107,9 +107,23 @@ final class LocoProvider implements ProviderInterface
                         'If-Modified-Since' => $previousCatalogue instanceof CatalogueMetadataAwareInterface ? $previousCatalogue->getCatalogueMetadata('last-modified', $domain) : null,
                     ],
                 ]);
+                $responses[$response] = [
+                    'locale' => $locale,
+                    'domain' => $domain,
+                    'previousCatalogue' => $previousCatalogue,
+                ];
+            }
+        }
 
+        foreach ($this->client->stream($responses) as $response => $chunk) {
+            ['locale' => $locale, 'domain' => $domain, 'previousCatalogue' => $previousCatalogue] = $responses[$response];
+
+            if ($chunk->isFirst()) {
                 if (404 === $response->getStatusCode()) {
                     $this->logger->warning(\sprintf('Locale "%s" for domain "%s" does not exist in Loco.', $locale, $domain));
+
+                    $response->cancel();
+
                     continue;
                 }
 
@@ -132,9 +146,9 @@ final class LocoProvider implements ProviderInterface
 
                     $translatorBag->addCatalogue($catalogue);
 
-                    continue;
+                    $response->cancel();
                 }
-
+            } elseif ($chunk->isLast()) {
                 $responseContent = $response->getContent(false);
 
                 if (200 !== $response->getStatusCode()) {
