@@ -55,11 +55,14 @@ final class LocoProvider implements ProviderInterface
     {
         $catalogue = $translatorBag->getCatalogue($this->defaultLocale);
 
+        $assetsToTag = [];
         foreach ($catalogue->all() as $domain => $messages) {
-            $createdIds = $this->createAssets(array_keys($messages), $domain);
-            if ($createdIds) {
-                $this->tagsAssets($createdIds, $domain);
+            if ($createdIds = $this->createAssets(array_keys($messages), $domain)) {
+                $assetsToTag[$domain] = $createdIds;
             }
+        }
+        if ($assetsToTag) {
+            $this->tagsAssets($assetsToTag);
         }
 
         foreach ($translatorBag->getCatalogues() as $catalogue) {
@@ -276,65 +279,90 @@ final class LocoProvider implements ProviderInterface
         }
     }
 
-    private function tagsAssets(array $ids, string $tag): void
+    private function tagsAssets(array $idsByTags): void
     {
-        if (!\in_array($tag, $this->getTags(), true)) {
-            $this->createTag($tag);
+        if ($newTags = array_diff(array_keys($idsByTags), $this->getTags())) {
+            $this->createTags($newTags);
         }
 
-        // Separate ids with and without comma.
-        $idsWithComma = $idsWithoutComma = [];
-        foreach ($ids as $id) {
-            if (str_contains($id, ',')) {
-                $idsWithComma[] = $id;
-            } else {
-                $idsWithoutComma[] = $id;
+        $responses = new \SplObjectStorage();
+
+        // Loco API allows to tag multiple assets at once by joining their IDs with commas.
+        // That means IDs containing commas must be tagged individually.
+        foreach ($idsByTags as $tag => $ids) {
+            foreach ($ids as $i => $id) {
+                if (!str_contains($id, ',')) {
+                    continue;
+                }
+
+                $response = $this->client->request('POST', \sprintf('assets/%s/tags', rawurlencode($id)), [
+                    'body' => ['name' => $tag],
+                ]);
+                $responses[$response] = [
+                    'tag' => $tag,
+                    'assetId' => $id,
+                ];
+
+                unset($idsByTags[$tag][$i]);
             }
         }
 
-        if ([] !== $idsWithoutComma) {
-            // Set tags for all ids without comma.
+        foreach ($idsByTags as $tag => $ids) {
+            if (!$ids) {
+                continue;
+            }
+
             $response = $this->client->request('POST', \sprintf('tags/%s.json', rawurlencode($tag)), [
-                'body' => implode(',', $idsWithoutComma),
+                'body' => implode(',', $ids),
             ]);
-
-            if (200 !== $statusCode = $response->getStatusCode()) {
-                $this->logger->error(\sprintf('Unable to tag assets with "%s" on Loco: "%s".', $tag, $response->getContent(false)));
-
-                if (500 <= $statusCode) {
-                    throw new ProviderException(\sprintf('Unable to tag assets with "%s" on Loco.', $tag), $response);
-                }
-            }
+            $responses[$response] = [
+                'tag' => $tag,
+                'assetId' => null,
+            ];
         }
 
-        // Set tags for each id with comma one by one.
-        foreach ($idsWithComma as $id) {
-            $response = $this->client->request('POST', \sprintf('assets/%s/tags', rawurlencode($id)), [
-                'body' => ['name' => $tag],
-            ]);
+        foreach ($this->client->stream($responses) as $response => $chunk) {
+            if ($chunk->isFirst() && 200 === $response->getStatusCode()) {
+                $response->cancel();
+            }
+            if (!$chunk->isLast()) {
+                continue;
+            }
 
-            if (200 !== $statusCode = $response->getStatusCode()) {
-                $this->logger->error(\sprintf('Unable to tag asset "%s" with "%s" on Loco: "%s".', $id, $tag, $response->getContent(false)));
+            ['tag' => $tag, 'assetId' => $assetId] = $responses[$response];
 
-                if (500 <= $statusCode) {
-                    throw new ProviderException(\sprintf('Unable to tag asset "%s" with "%s" on Loco.', $id, $tag), $response);
-                }
+            $this->logger->error(\sprintf('Unable to tag asset%s with "%s" on Loco: "%s".', $assetId ? ' "'.$assetId.'"' : 's', $tag, $response->getContent(false)));
+
+            if (500 <= $response->getStatusCode()) {
+                throw new ProviderException(\sprintf('Unable to tag asset%s with "%s" on Loco.', $assetId ? ' "'.$assetId.'"' : 's', $tag), $response);
             }
         }
     }
 
-    private function createTag(string $tag): void
+    private function createTags(array $tags): void
     {
-        $response = $this->client->request('POST', 'tags.json', [
-            'body' => [
-                'name' => $tag,
-            ],
-        ]);
+        $responses = new \SplObjectStorage();
+        foreach ($tags as $tag) {
+            $response = $this->client->request('POST', 'tags.json', [
+                'body' => [
+                    'name' => $tag,
+                ],
+            ]);
+            $responses[$response] = $tag;
+        }
 
-        if (201 !== $statusCode = $response->getStatusCode()) {
+        foreach ($this->client->stream($responses) as $response => $chunk) {
+            if ($chunk->isFirst() && 201 === $response->getStatusCode()) {
+                $response->cancel();
+            }
+            if (!$chunk->isLast()) {
+                continue;
+            }
+
+            $tag = $responses[$response];
             $this->logger->error(\sprintf('Unable to create tag "%s" on Loco: "%s".', $tag, $response->getContent(false)));
 
-            if (500 <= $statusCode) {
+            if (500 <= $response->getStatusCode()) {
                 throw new ProviderException(\sprintf('Unable to create tag "%s" on Loco.', $tag), $response);
             }
         }

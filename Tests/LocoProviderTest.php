@@ -88,29 +88,6 @@ class LocoProviderTest extends ProviderTestCase
 
                 return new MockResponse('{"id": "messages__a"}', ['http_code' => 201]);
             },
-            'getTags1' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
-                $this->assertSame('GET', $method);
-                $this->assertSame('https://localise.biz/api/tags.json', $url);
-                $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
-
-                return new MockResponse('[]');
-            },
-            'createTag1' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
-                $this->assertSame('POST', $method);
-                $this->assertSame('https://localise.biz/api/tags.json', $url);
-                $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
-                $this->assertSame(http_build_query(['name' => 'messages']), $options['body']);
-
-                return new MockResponse('', ['http_code' => 201]);
-            },
-            'tagAsset1' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
-                $this->assertSame('POST', $method);
-                $this->assertSame('https://localise.biz/api/tags/messages.json', $url);
-                $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
-                $this->assertSame('messages__a', $options['body']);
-
-                return new MockResponse();
-            },
             'createAsset2' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
                 $expectedBody = http_build_query([
                     'id' => 'validators__post.num_comments',
@@ -125,12 +102,20 @@ class LocoProviderTest extends ProviderTestCase
 
                 return new MockResponse('{"id": "validators__post.num_comments"}', ['http_code' => 201]);
             },
-            'getTags2' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
+            'getTags' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
                 $this->assertSame('GET', $method);
                 $this->assertSame('https://localise.biz/api/tags.json', $url);
                 $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
 
-                return new MockResponse('["messages"]');
+                return new MockResponse('[]');
+            },
+            'createTag1' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
+                $this->assertSame('POST', $method);
+                $this->assertSame('https://localise.biz/api/tags.json', $url);
+                $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
+                $this->assertSame(http_build_query(['name' => 'messages']), $options['body']);
+
+                return new MockResponse('', ['http_code' => 201]);
             },
             'createTag2' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
                 $this->assertSame('POST', $method);
@@ -139,6 +124,14 @@ class LocoProviderTest extends ProviderTestCase
                 $this->assertSame(http_build_query(['name' => 'validators']), $options['body']);
 
                 return new MockResponse('', ['http_code' => 201]);
+            },
+            'tagAsset1' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
+                $this->assertSame('POST', $method);
+                $this->assertSame('https://localise.biz/api/tags/messages.json', $url);
+                $this->assertSame($expectedAuthHeader, $options['normalized_headers']['authorization'][0]);
+                $this->assertSame('messages__a', $options['body']);
+
+                return new MockResponse();
             },
             'tagAsset2' => function (string $method, string $url, array $options = []) use ($expectedAuthHeader): ResponseInterface {
                 $this->assertSame('POST', $method);
