@@ -184,26 +184,40 @@ final class LocoProvider implements ProviderInterface
 
     public function delete(TranslatorBagInterface $translatorBag): void
     {
-        $catalogue = $translatorBag->getCatalogue($this->defaultLocale);
+        $responses = new \SplObjectStorage();
+        $deletedIds = [];
 
-        $responses = [];
+        foreach ($translatorBag->getCatalogues() as $catalogue) {
+            foreach ($catalogue->all() as $domain => $messages) {
+                foreach ($messages as $key => $message) {
+                    $id = $domain.'__'.$key;
+                    if (isset($deletedIds[$id])) {
+                        continue;
+                    }
 
-        foreach (array_keys($catalogue->all()) as $domain) {
-            foreach ($this->getAssetsIds($domain) as $id) {
-                $responses[$id] = $this->client->request('DELETE', \sprintf('assets/%s.json', rawurlencode($id)));
+                    $responses[$this->client->request('DELETE', \sprintf('assets/%s.json', rawurlencode($id)))] = $id;
+                    $deletedIds[$id] = $id;
+                }
             }
         }
 
-        foreach ($responses as $key => $response) {
-            if (403 === $statusCode = $response->getStatusCode()) {
-                $this->logger->error('The API key used does not have sufficient permissions to delete assets.');
-            }
+        foreach ($this->client->stream($responses) as $response => $chunk) {
+            if ($chunk->isFirst()) {
+                switch ($response->getStatusCode()) {
+                    case 403:
+                        $this->logger->error('The API key used does not have sufficient permissions to delete assets.');
+                        // no break
+                    case 200:
+                    case 404:
+                        $response->cancel();
+                }
+            } elseif ($chunk->isLast()) {
+                $assetId = $responses[$response];
 
-            if (200 !== $statusCode && 404 !== $statusCode) {
-                $this->logger->error(\sprintf('Unable to delete translation key "%s" to Loco: "%s".', $key, $response->getContent(false)));
+                $this->logger->error(\sprintf('Unable to delete translation key "%s" to Loco: "%s".', $assetId, $response->getContent(false)));
 
-                if (500 <= $statusCode) {
-                    throw new ProviderException(\sprintf('Unable to delete translation key "%s" to Loco.', $key), $response);
+                if (500 <= $response->getStatusCode()) {
+                    throw new ProviderException(\sprintf('Unable to delete translation key "%s" to Loco.', $assetId), $response);
                 }
             }
         }

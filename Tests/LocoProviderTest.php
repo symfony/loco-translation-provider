@@ -839,25 +839,11 @@ class LocoProviderTest extends ProviderTestCase
 
         $provider = self::createProvider(
             new MockHttpClient([
-                function (string $method, string $url, array $options = []): ResponseInterface {
-                    $this->assertSame('GET', $method);
-                    $this->assertSame('https://localise.biz/api/assets?filter=messages', $url);
-                    $this->assertSame(['filter' => 'messages'], $options['query']);
-
-                    return new MockResponse('[{"id":"messages__a"}]');
-                },
                 function (string $method, string $url): MockResponse {
                     $this->assertSame('DELETE', $method);
                     $this->assertSame('https://localise.biz/api/assets/messages__a.json', $url);
 
                     return new MockResponse();
-                },
-                function (string $method, string $url, array $options = []): ResponseInterface {
-                    $this->assertSame('GET', $method);
-                    $this->assertSame('https://localise.biz/api/assets?filter=validators', $url);
-                    $this->assertSame(['filter' => 'validators'], $options['query']);
-
-                    return new MockResponse('[{"id":"validators__post.num_comments"}]');
                 },
                 function (string $method, string $url): MockResponse {
                     $this->assertSame('DELETE', $method);
@@ -884,13 +870,6 @@ class LocoProviderTest extends ProviderTestCase
 
         $provider = self::createProvider(
             new MockHttpClient([
-                function (string $method, string $url, array $options = []): ResponseInterface {
-                    $this->assertSame('GET', $method);
-                    $this->assertSame('https://localise.biz/api/assets?filter=messages', $url);
-                    $this->assertSame(['filter' => 'messages'], $options['query']);
-
-                    return new MockResponse('[{"id":"messages__a"}]');
-                },
                 function (string $method, string $url): MockResponse {
                     $this->assertSame('DELETE', $method);
                     $this->assertSame('https://localise.biz/api/assets/messages__a.json', $url);
