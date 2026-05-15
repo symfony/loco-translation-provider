@@ -203,13 +203,15 @@ final class LocoProvider implements ProviderInterface
 
         foreach ($this->client->stream($responses) as $response => $chunk) {
             if ($chunk->isFirst()) {
-                switch ($response->getStatusCode()) {
-                    case 403:
-                        $this->logger->error('The API key used does not have sufficient permissions to delete assets.');
-                        // no break
-                    case 200:
-                    case 404:
-                        $response->cancel();
+                if (403 === $statusCode = $response->getStatusCode()) {
+                    $assetId = $responses[$response];
+                    $this->logger->error(\sprintf('The API key used does not have sufficient permissions to delete asset "%s".', $assetId));
+                    $response->cancel();
+
+                    throw new ProviderException(\sprintf('Unable to delete translation key "%s" to Loco: forbidden.', $assetId), $response);
+                }
+                if (200 === $statusCode || 404 === $statusCode) {
+                    $response->cancel();
                 }
             } elseif ($chunk->isLast()) {
                 $assetId = $responses[$response];
