@@ -702,8 +702,8 @@ class LocoProviderTest extends ProviderTestCase
      */
     public function testReadForOneLocaleAndOneDomain(string $locale, string $domain, string $responseContent, TranslatorBag $expectedTranslatorBag)
     {
-        $loader = $this->getLoader();
-        $loader->expects($this->once())
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->once())
             ->method('load')
             ->willReturn((new XliffFileLoader())->load($responseContent, $locale, $domain));
 
@@ -712,7 +712,7 @@ class LocoProviderTest extends ProviderTestCase
             'headers' => [
                 'Authorization' => 'Loco API_KEY',
             ],
-        ]), $loader, new NullLogger(), 'en', 'localise.biz/api/');
+        ]), $this->loader, new NullLogger(), 'en', 'localise.biz/api/');
         $translatorBag = $provider->read([$domain], [$locale]);
         // We don't want to assert equality of metadata here, due to the ArrayLoader usage.
         foreach ($translatorBag->getCatalogues() as $catalogue) {
@@ -739,8 +739,8 @@ class LocoProviderTest extends ProviderTestCase
             }
         }
 
-        $loader = $this->getLoader();
-        $loader->expects($this->exactly(\count($consecutiveLoadArguments)))
+        $this->loader = $this->createMock(LoaderInterface::class);
+        $this->loader->expects($this->exactly(\count($consecutiveLoadArguments)))
             ->method('load')
             ->willReturnCallback(function (...$args) use (&$consecutiveLoadArguments, &$consecutiveLoadReturns) {
                 $this->assertSame(array_shift($consecutiveLoadArguments), $args);
@@ -753,7 +753,7 @@ class LocoProviderTest extends ProviderTestCase
             'headers' => [
                 'Authorization' => 'Loco API_KEY',
             ],
-        ]), $loader, $this->getLogger(), 'en', 'localise.biz/api/');
+        ]), $this->loader, $this->getLogger(), 'en', 'localise.biz/api/');
         $translatorBag = $provider->read($domains, $locales);
         // We don't want to assert equality of metadata here, due to the ArrayLoader usage.
         foreach ($translatorBag->getCatalogues() as $catalogue) {
